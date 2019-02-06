@@ -1,5 +1,12 @@
 <html lang="en">
 
+<script>
+// Set the following values to match your application:
+var appID = "YOUR TURBOWALLET APP ID"
+var contractAddress = "GO20 TOKEN ADDRESS"
+var jwtURL = "URL TO BACKEND TO SIGN JWT TOKENS/CreateJWT"
+</script>
+
 <head>
     <meta charset="utf-8">
     <title>jQuery.post demo</title>
@@ -9,23 +16,22 @@
 
 <body>
 
+
+    <div id="result" style="margin-top: 20px; margin-bottom: 30px;"></div>
+    
     <form action="#!" id="authForm">
         <input type="text" name="username" placeholder="Telegram username...">
         <input type="submit" value="Search">
     </form>
 
     <form action="#!" id="txForm" style="display:none;">
-        <input type="number" name="amount" placeholder="Number of tokens...">
+        <input type="number" name="amount" step=".00001" placeholder="Number of tokens...">
         <input type="submit" value="Transfer Tokens">
     </form>
 
-    <div id="result"></div>
-
     <script>
-        var baseURL = "http://localhost:8080/v1/ow"
-        var appID = "1e0yVt1zUCgFKOhvCNk1"
-        var turboContract = "0x2B07744a3b6b31e13aB77f4b813a1CEE0d76DFdE"
-        var web3js = new Web3(new Web3.providers.HttpProvider('https://testnet-rpc.gochain.io'));
+        var turboWalletAPI = "https://api.turbowallet.io/v1/ow" // "https://localhost:8080/v1/ow"
+    
         // Attach a submit handler to the form
         $("#authForm").submit(function (event) {
 
@@ -35,60 +41,73 @@
             // Get some values from elements on the page:
             var $form = $(this),
                 username = $form.find("input[name='username']").val(),
-                url = baseURL + "/authorize"
-            // Send the data using post
-            var data = { username: username, app_id: appID, amount: 10, symbol: "GO", duration: 240 };
-            var posting = $.ajax({
-                url: url,
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                dataType: 'json'
-            });
+                url = turboWalletAPI + "/authorize"
+            // get token
+            var jqxhr = $.getJSON(jwtURL, {username: username})
+            .done(function(data) {
+                console.log( "second success", data );
+                // Send the data using post
+                var data = { username: username, app_id: appID, amount: 10, symbol: "GO", duration: 300, token: data.token};
+                var posting = $.ajax({
+                    url: url,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    dataType: 'json'
+                });
 
-            // Put the results in a div
-            var statusCount = 0;
-            posting.done(function (data) {
-                console.log("YO", data)
-                $("#result").empty().append(JSON.stringify(data));
-                sessionStorage.setItem("turbo_code", data.code);
-                // wait for authorization
-                var timer = setInterval(function () {
-                    // todo: show progress bar - infinite
-                    var posting = $.ajax({
-                        url: baseURL + "/status",
-                        type: 'GET',
-                        contentType: 'application/json',
-                        data: ({ app_id: appID, code: sessionStorage.getItem("turbo_code") }),
-                        dataType: 'json'
-                    });
-                    posting.done(function (data) {
-                        console.log(data);
-                        if (data.approved) {
-                            clearInterval(timer);
-                            console.log("APPROVED!");
-                            $form.hide();
-                            $("#txForm").show();
-                        }
-                    })
-                        .fail(function (jqxhr, status, err) {
-                            console.log(status)
-                            console.log(err)
-                            console.log(jqxhr)
+                // Put the results in a div
+                var statusCount = 0;
+                posting.done(function (data) {
+                    console.log("YO", data)
+                    $("#result").empty().append("Check Telegram to approve");
+                    sessionStorage.setItem("turbo_code", data.code);
+                    // wait for authorization
+                    var timer = setInterval(function () {
+                        // todo: show progress bar - infinite
+                        var posting = $.ajax({
+                            url: turboWalletAPI + "/status",
+                            type: 'GET',
+                            contentType: 'application/json',
+                            data: ({ app_id: appID, code: sessionStorage.getItem("turbo_code") }),
+                            dataType: 'json'
                         });
-                    statusCount += 1;
-                    if (statusCount > 60) {
-                        clearInterval(timer);
-                        $("#result").empty().append("Timed out waiting for approval");
-                    }
-                }, 1000);
+                        posting.done(function (data) {
+                            console.log(data);
+                            if (data.approved) {
+                                clearInterval(timer);
+                                console.log("APPROVED!");
+                                $form.hide();
+                                $("#result").empty().append("Approved! Enter number of tokens to transfer:");
+                                $("#txForm").show();
+                            }
+                        })
+                            .fail(function (jqxhr, status, err) {
+                                console.log(status)
+                                console.log(err)
+                                console.log(jqxhr)
+                            });
+                        statusCount += 1;
+                        if (statusCount > 60) {
+                            clearInterval(timer);
+                            $("#result").empty().append("Timed out waiting for approval");
+                        }
+                    }, 1000);
 
-            }).fail(function (jqxhr, status, err) {
-                console.log(status)
-                console.log(err)
-                console.log(jqxhr)
-                $("#result").empty().append(jqxhr.responseText);
+                }).fail(function (jqxhr, status, err) {
+                    console.log(status)
+                    console.log(err)
+                    console.log(jqxhr)
+                    $("#result").empty().append(jqxhr.responseText);
+                });
+            })
+            .fail(function(err) {
+                console.log( "error getting jwt", err );
+            })
+            .always(function() {
+                console.log( "complete jwt" );
             });
+
 
         });
 
@@ -101,8 +120,8 @@
             // Get some values from elements on the page:
             var $form = $(this),
                 amount = $form.find("input[name='amount']").val(),
-                url = baseURL + "/send"
-            var data = { app_id: appID, code: sessionStorage.getItem("turbo_code"), to: turboContract, value: parseFloat(amount) };
+                url = turboWalletAPI + "/send"
+            var data = { app_id: appID, code: sessionStorage.getItem("turbo_code"), to: contractAddress, value: parseFloat(amount) };
             var posting = $.ajax({
                 url: url,
                 type: 'POST',
