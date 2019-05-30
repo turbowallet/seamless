@@ -1,10 +1,5 @@
 <html lang="en">
 
-<script>
-    // Set the following values to match your application:
-    var appID = "1e0yVt1zUCgFKOhvCNk1"
-</script>
-
 <head>
     <meta charset="utf-8">
     <title>Seamless demo</title>
@@ -12,26 +7,40 @@
     <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.0.0-beta.34/dist/web3.min.js"></script>
 </head>
 
-<script>
-
-</script>
-
 <body>
+
+    <script>
+        // Set the following values to match your application:
+        var appID = "1e0yVt1zUCgFKOhvCNk1"
+        var contractAddress = "0x83E24Cb0283F78fC2164ab5C30E10128948d53Eb"
+        var abiURL = "https://gist.githubusercontent.com/treeder/0c95597a92c04f695fe98f4f3cf5be37/raw/529493e8e28354ae2c23b681f8aa9fbe23f2afe0/incrementor.abi"
+        var w3 = new Web3(new Web3.providers.HttpProvider('https://testnet-rpc.gochain.io'));
+    </script>
+
 
     <div id="result" style="margin-top: 20px; margin-bottom: 30px;"></div>
 
     <form action="#!" id="authForm">
         Copy and paste the following command to connect to this app:<br />
         <input type="text" name="cmd" id="cmd" value="">
+        <br />TODO: link with ?start parameters?
     </form>
 
-    <form action="#!" id="txForm" style="display:none;">
-        Amount of tokens to send:<br />
-        <input type="number" name="amount" step=".00001" placeholder="Number of tokens..."><br />
-        To address:<br />
-        <input name="to" placeholder="0xABC123"><br />
-        <input type="submit" value="Transfer Tokens">
-    </form>
+    <div id="afterApproved" style="display: none;">
+        <form action="#!" id="txForm">
+            <h2>Transfer Native Token</h2>
+            Amount of tokens to send:<br />
+            <input type="number" name="amount" step=".00001" placeholder="Number of tokens..."><br />
+            To address:<br />
+            <input name="to" placeholder="0xABC123"><br />
+            <input type="submit" value="Transfer Tokens">
+        </form>
+        <form action="#!" id="contractForm">
+            <h2>Use the Apps Contract</h2>
+            <input type="submit" value="Call function">
+            <div id="counter"></div>
+        </form>
+    </div>
 
     <script>
         var turboWalletAPI =
@@ -124,8 +133,8 @@
                             clearInterval(timer);
                             console.log("APPROVED!");
                             // $form.hide();
-                            $("#result").empty().append("Approved! Enter number of tokens to transfer:");
-                            $("#txForm").show();
+                            $("#result").empty().append("Approved!<br/><br/>");
+                            $("#afterApproved").show();
                         }
                     })
                         .fail(function (jqxhr, status, err) {
@@ -157,16 +166,17 @@
             event.preventDefault();
 
             // Get some values from elements on the page:
-            var $form = $(this),
-                amount = $form.find("input[name='amount']").val(),
-                to = $form.find("input[name='to']").val(),
-                url = turboWalletAPI + "/send"
+            // var $form = $(this),
+            //     amount = $form.find("input[name='amount']").val(),
+            //     to = $form.find("input[name='to']").val(),
+            //     url = turboWalletAPI + "/send"
             var data = {
                 app_id: appID,
                 code: sessionStorage.getItem("turbo_code"),
-                symbol: "GOTEST",
-                to: to,
-                value: parseFloat(amount)
+                call: {
+                    "name": "increment",
+                    // if this hard arguments, you'd put them here in a map called "args"
+                }
             };
             var posting = $.ajax({
                 url: url,
@@ -187,10 +197,88 @@
                 console.log(err)
                 console.log(jqxhr)
                 $("#result").empty().append(jqxhr.responseText);
+
             }).always(function () {
                 console.log("complete tx");
             });
         });
+
+        // Attach a submit handler to the form
+        $("#contractForm").submit(function (event) {
+
+            // Stop form from submitting normally
+            event.preventDefault();
+
+            // Get some values from elements on the page:
+            var $form = $(this),
+                amount = $form.find("input[name='amount']").val(),
+                to = $form.find("input[name='to']").val(),
+                url = turboWalletAPI + "/send"
+            var data = {
+                app_id: appID,
+                code: sessionStorage.getItem("turbo_code"),
+                call: { // function call
+                    "name": "increment", // function name
+                    "args": [], // function args
+                },
+            };
+            var posting = $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                dataType: 'json'
+            });
+
+            // Put the results in a div
+            var statusCount = 0;
+            posting.done(function (data) {
+                console.log("YO2", data)
+                $("#result").empty().append(JSON.stringify(data));
+                var timer2 = setInterval(() => {
+                    w3.eth.getTransactionReceipt(data.tx_hash)
+                        .then((result) => {
+                            console.log("receipt:", result);
+                            // console.log("receipt:", receipt);
+                            if (result != null) {
+                                clearInterval(timer2);
+                                getCounter();
+                            }
+                        });
+                }, 1000);
+
+
+            }).fail(function (jqxhr, status, err) {
+                console.log(status)
+                console.log(err)
+                console.log(jqxhr)
+                $("#result").empty().append(jqxhr.responseText);
+            }).always(function () {
+                console.log("complete tx");
+            });
+        });
+
+        function getCounter() {
+            $.getJSON(abiURL)
+                .done(function (data) {
+                    console.log("got abi", data);
+                    contract = new w3.eth.Contract(data, contractAddress)
+                    contract.methods.count().call()
+                        .then((result) => {
+                            console.log("got counter:", result);
+                            $("#counter").empty().append(result);
+                        });
+
+                })
+                .fail(function (err) {
+                    console.log("error getting abi", err);
+                })
+                .always(function () {
+                    console.log("complete");
+                });
+
+
+        }
 
     </script>
 
