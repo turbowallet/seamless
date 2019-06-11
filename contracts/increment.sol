@@ -18,4 +18,7 @@ contract Incrementor {
         return counter;
     }
 
+    function testTypes(uint16 i16) public {
+    }
+
 }

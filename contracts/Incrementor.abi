@@ -15,6 +15,20 @@
   },
   {
     "constant": false,
+    "inputs": [
+      {
+        "name": "i16",
+        "type": "uint16"
+      }
+    ],
+    "name": "testTypes",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
     "inputs": [],
     "name": "increment",
     "outputs": [

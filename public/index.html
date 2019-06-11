@@ -11,13 +11,19 @@
 
     <script>
         // Set the following values to match your application:
-        var appID = "t48xfQ4buXD0EVLq9Ozm"
-        var contractAddress = "0xcb00Dd3294C4AD97d4A6BA8F6AABB50F35F3CC3D"
+        var appID =
+            // "t48xfQ4buXD0EVLq9Ozm"; // main
+            "1e0yVt1zUCgFKOhvCNk1"; // test
+        var contractAddress =
+            // "0xcb00Dd3294C4AD97d4A6BA8F6AABB50F35F3CC3D"; // main
+            "0x4Dca93EF2504a346FC62991B9E9F1B2CA0f03596"; // test
         var abiURL = "https://gist.githubusercontent.com/treeder/0c95597a92c04f695fe98f4f3cf5be37/raw/529493e8e28354ae2c23b681f8aa9fbe23f2afe0/incrementor.abi"
-        var rpcURL = 'https://rpc.gochain.io';
+        var rpcURL =
+            // 'https://rpc.gochain.io'; // main
+            'https://testnet-rpc.gochain.io'; // test
         var turboWalletAPI =
-            "https://api.turbowallet.io/v1/ow";
-            // "http://localhost:8080/v1/ow";
+            // "https://api.turbowallet.io/v1/ow";
+            "http://localhost:8080/v1/ow";
     </script>
 
 
@@ -46,7 +52,7 @@
     </div>
 
     <script>
-       var w3 = new Web3(new Web3.providers.HttpProvider(rpcURL));
+        var w3 = new Web3(new Web3.providers.HttpProvider(rpcURL));
         function uuidv4() {
             return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
                 (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -102,7 +108,7 @@
             console.log("in ask for open wallet")
             // Send the data using post
             let url = turboWalletAPI + "/authorize"
-            var data = { user_id: userID, app_id: appID, amount: 10, symbol: "GO", duration: 300 };
+            var data = { user_id: userID, app_id: appID, amount: 10, symbol: "GO", duration: 600 };
             var posting = $.ajax({
                 url: url,
                 type: 'POST',
@@ -215,6 +221,10 @@
                     "name": "increment", // function name
                     "args": [], // function args
                 },
+                // call: { // function call
+                //     "name": "testTypes", // function name
+                //     "args": [1], // function args
+                // },
             };
             var posting = $.ajax({
                 url: url,
